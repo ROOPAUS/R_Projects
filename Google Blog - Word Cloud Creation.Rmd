@@ -1,0 +1,116 @@
+---
+title: "Google Blog - WordCloud"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+install.packages("XML")
+install.packages("RCurl")
+library("RCurl")
+library("XML")
+# Read and parse HTML file
+```
+
+
+# Importing data from website
+
+```{r}
+doc.url<-getURL("https://www.blog.google/technology/safety-security/safer-internet-day-2020/")
+doc.html <- htmlParse(doc.url)
+
+# Extract all the paragraphs (HTML tag is p, starting at
+# the root of the document). Unlist flattens the list to
+# create a character vector.
+
+plain.text <- xpathApply(doc.html, "//p", xmlValue)
+cat(paste(plain.text[2:8], collapse = " "),file="outfile.txt")
+actual.text<-paste(readLines("outfile.txt"),collapse=" ")
+actual.text
+```
+
+# Cleaning text data in R
+
+```{r}
+install.packages("tm")
+library(tm)
+```
+
+```{r}
+# Removing spaces and punctuations
+clean.text<- gsub(pattern="\\W", replace=" ", actual.text)
+
+# Removing digits
+clean.text<- gsub("\\d", replace=" ", clean.text)
+
+# converting all words to lowercase
+clean.text<- tolower(clean.text)
+
+# removing stopwords
+clean.text<- removeWords(clean.text, stopwords())
+
+# removing single length words
+# if we want to remove words starting with a particular alphabet, say 'd', then write gsub("\\bd\\b, replace=" ", clean.text)
+# if we want to remove words starting with a particular alphabet, say 'd' of length 1, then write gsub("\\bd\\b{1},replace=" ",clean.text)
+# Similarly for removing words starting with a set of alphabets(say: d,a and s), write \\b[c('d','a','s')]\\b inside gsub
+
+#Here, we are removing only single letter words
+clean.text<- gsub("\\b[A-z]\\b{1}",replace=" ", clean.text)
+
+#Removing extra whitespaces
+clean.text<- stripWhitespace(clean.text)
+clean.text
+```
+
+
+```{r}
+install.packages("stringr")
+install.packages("wordcloud")
+library(stringr)
+library(wordcloud)
+```
+#Sentiment analysis
+
+```{r}
+#to convert to bag or list of words
+clean.text.bag <- str_split(clean.text,pattern="\\s+")
+class(clean.text.bag)
+
+#to convert list to character type
+clean.text.bag<-unlist(clean.text.bag)
+class(clean.text.bag)
+str(clean.text.bag)
+
+#Identify working directory and copy paste the sentiments words to text files and place it in that directory
+getwd()
+pos.text<-paste(readLines("positive_sentiments.txt"))
+neg.text<-paste(readLines("negative_sentiments.txt"))
+
+#Finding matching positive word count
+match(clean.text.bag,pos.text)
+
+# denoting na as false and others as true
+!is.na(match(clean.text.bag,pos.text))
+
+# getting sum of non na values or matching values
+total_positive<- sum(!is.na(match(clean.text.bag,pos.text)))
+
+
+
+#Similarly, for finding sum of negative terms
+total_negative<- sum(!is.na(match(clean.text.bag,neg.text)))
+
+#Finding total sentiment score
+total_score<-total_positive-total_negative
+total_score
+```
+
+#Creating wordcloud
+
+```{r}
+#As this is a small document, the word cloud doesnt have much terms.We can adjust this by reducing the frequency
+wordcloud(clean.text,min.freq = 2, random.order=FALSE, scale=c(3,0.5),color=rainbow(3))
+```
